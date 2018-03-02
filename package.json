@@ -7,5 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Mark Ford",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "date-diff": "^0.1.3"
+  }
 }
