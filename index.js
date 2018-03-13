@@ -2,34 +2,44 @@
 * @Author: mark
 * @Date:   2018-03-02 16:10:28
 * @Last Modified by:   Mark Ford
-* @Last Modified time: 2018-03-09 10:37:40
+* @Last Modified time: 2018-03-13 11:50:30
 */
 const DateDiff = require('date-diff');
 const MongoClient = require('mongodb').MongoClient;
 const dbConnection = require('./dbConnection.js');
 const url = 'mongodb://'+ dbConnection.user +':'+ dbConnection.password + '@' + dbConnection.url ;
+const today = new Date();
+
+const Alexa = require('alexa-sdk');
+let tellCountdowns = 'nothing'
+
 
 const holidays = function(db, callback) {
   // list the holidays from mongo
     var collection = db.collection('holidays');
 
-    collection.find().toArray(function(err,holidayList){
+    collection.find().toArray(function(err, holidayList){
         if (err) throw err;
         // call the getHolidays method 
         getHolidays(holidayList[0]);
+        console.log(tellCountdowns)
     });
 
 };
 
-MongoClient.connect(url, function(err, client){
-    if (err) throw err;
-    holidays(client.db('holidays'), function(){
-        db.close();
-    });
-});
+
+const returnHolidays = function(){
+    MongoClient.connect(url, function(err, client){
+      if (err) throw err;
+      holidays(client.db('holidays'), function(){
+          db.close();
+      });
+  });
+}
 
 
-const today = new Date();
+
+
 
 const getHolidays =  function(holidayList){
   // create empty array to store upcoming trips
@@ -50,11 +60,44 @@ const getHolidays =  function(holidayList){
       }
     }
 	}
-	console.log('You have ' + holidayCountdowns.length + ' upcoming trips');
 	holidayCountdowns.sort(function(a, b){
 	    return a.days-b.days;
 	});
-	console.log(holidayCountdowns.sort());
+	holidayCountdowns = holidayCountdowns.sort();
+
+  let descriptions = ''
+    for (var h in holidayCountdowns){
+      if(holidayCountdowns.hasOwnProperty(h)){
+        let separator = ' '
+        if(h < holidayCountdowns.length){
+          separator = ', '
+        }
+        if(h == holidayCountdowns.length - 2){
+          separator = ' and '
+        }
+        descriptions = descriptions + holidayCountdowns[h].destination + ' in ' + holidayCountdowns[h].days + ' days' + separator
+    }
+  }
+  tellCountdowns = 'You have ' + holidayCountdowns.length + ' upcoming trips. You\'re going to ' + descriptions;
 };
 
 
+exports.handler = function(event, context, callback){
+  let alexa = Alexa.handler(event, context);
+  alexa.registerHandlers(handlers);
+  alexa.execute()
+};
+
+
+let handlers = {
+  'LaunchRequest': function(){
+    this.emit(':ask', 'Welcome to Holiday Countdown, try saying when is my holiday?')
+  },
+  'howLongIntent': function(){
+    returnHolidays()
+    this.emit(':tell', tellCountdowns)
+  },
+
+}
+
+returnHolidays()
