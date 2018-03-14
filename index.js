@@ -2,7 +2,7 @@
 * @Author: mark
 * @Date:   2018-03-02 16:10:28
 * @Last Modified by:   Mark Ford
-* @Last Modified time: 2018-03-13 11:50:30
+* @Last Modified time: 2018-03-14 12:31:02
 */
 const DateDiff = require('date-diff');
 const MongoClient = require('mongodb').MongoClient;
@@ -11,42 +11,33 @@ const url = 'mongodb://'+ dbConnection.user +':'+ dbConnection.password + '@' + 
 const today = new Date();
 
 const Alexa = require('alexa-sdk');
-let tellCountdowns = 'nothing'
 
-
-const holidays = function(db, callback) {
+const holidays = {
+  init: function(){
+    MongoClient.connect(url, function(err, client){
+      if (err) throw err;
+        holidays.retrieve(client.db('holidays'), function(){
+            db.close();
+        });
+    });
+  },
+  retrieve: function(db, callback) {
   // list the holidays from mongo
     var collection = db.collection('holidays');
 
     collection.find().toArray(function(err, holidayList){
         if (err) throw err;
         // call the getHolidays method 
-        getHolidays(holidayList[0]);
+        holidays.compose(holidayList[0]);
         console.log(tellCountdowns)
     });
-
-};
-
-
-const returnHolidays = function(){
-    MongoClient.connect(url, function(err, client){
-      if (err) throw err;
-      holidays(client.db('holidays'), function(){
-          db.close();
-      });
-  });
-}
-
-
-
-
-
-const getHolidays =  function(holidayList){
+  },
+  compose: function(holidayList){
   // create empty array to store upcoming trips
-	let holidayCountdowns = [];
-	for (var h in holidayList.holidays){
+  let holidayCountdowns = [];
+  for (var h in holidayList.holidays){
     // loop over the array returned from mongo
-		if(holidayList.holidays.hasOwnProperty(h)){
+    if(holidayList.holidays.hasOwnProperty(h)){
       // work out the difference in days between now and departure
       let diff = new DateDiff(new Date(holidayList.holidays[h].departure), today);
       let daysToGo = Math.floor(diff.days());
@@ -59,11 +50,11 @@ const getHolidays =  function(holidayList){
           });
       }
     }
-	}
-	holidayCountdowns.sort(function(a, b){
-	    return a.days-b.days;
-	});
-	holidayCountdowns = holidayCountdowns.sort();
+  }
+  holidayCountdowns.sort(function(a, b){
+      return a.days-b.days;
+  });
+  holidayCountdowns = holidayCountdowns.sort();
 
   let descriptions = ''
     for (var h in holidayCountdowns){
@@ -79,7 +70,10 @@ const getHolidays =  function(holidayList){
     }
   }
   tellCountdowns = 'You have ' + holidayCountdowns.length + ' upcoming trips. You\'re going to ' + descriptions;
-};
+}
+
+}
+
 
 
 exports.handler = function(event, context, callback){
@@ -100,4 +94,4 @@ let handlers = {
 
 }
 
-returnHolidays()
+holidays.init()
