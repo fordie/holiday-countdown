@@ -2,7 +2,7 @@
 * @Author: mark
 * @Date:   2018-03-02 16:10:28
 * @Last Modified by:   Mark Ford
-* @Last Modified time: 2018-03-14 12:31:02
+* @Last Modified time: 2018-03-28 13:40:00
 */
 const DateDiff = require('date-diff');
 const MongoClient = require('mongodb').MongoClient;
@@ -16,20 +16,26 @@ const holidays = {
   init: function(){
     MongoClient.connect(url, function(err, client){
       if (err) throw err;
-        holidays.retrieve(client.db('holidays'), function(){
-            db.close();
+        let db = client.db('holidays');
+        holidays.retrieve(db, function(){
+            // for local testing
+            //console.log(tellCountdowns)
+            client.close();
+            return tellCountdowns;
         });
+
     });
+
   },
   retrieve: function(db, callback) {
   // list the holidays from mongo
-    var collection = db.collection('holidays');
+    let collection = db.collection('holidays');
 
-    collection.find().toArray(function(err, holidayList){
+    collection.find().toArray(function(err, holidayList, db){
         if (err) throw err;
         // call the getHolidays method 
         holidays.compose(holidayList[0]);
-        console.log(tellCountdowns)
+        callback(tellCountdowns)
     });
   },
   compose: function(holidayList){
@@ -70,6 +76,7 @@ const holidays = {
     }
   }
   tellCountdowns = 'You have ' + holidayCountdowns.length + ' upcoming trips. You\'re going to ' + descriptions;
+  return tellCountdowns
 }
 
 }
@@ -89,9 +96,9 @@ let handlers = {
   },
   'howLongIntent': function(){
     returnHolidays()
-    this.emit(':tell', tellCountdowns)
+    this.emit(':tell', holidays.init())
   },
 
 }
-
-holidays.init()
+// for local testing
+//holidays.init()
